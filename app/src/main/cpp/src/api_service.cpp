@@ -1,5 +1,6 @@
 #include "api_service.h"
 #include "json_parser.h"
+#include "app_config.h"
 #include <android/log.h>
 #include <sstream>
 #include <chrono>
@@ -13,26 +14,12 @@ namespace localify {
 
 std::unique_ptr<APIService> APIService::instance = nullptr;
 
-// Callback function for libcurl to write response data
-static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {
-    size_t totalSize = size * nmemb;
-    userp->append((char*)contents, totalSize);
-    return totalSize;
-}
-
-APIService::APIService() : apiUrl("https://staging.localify.org") {
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    curl = curl_easy_init();
-    if (!curl) {
-        LOGE("Failed to initialize libcurl");
-    }
+APIService::APIService() : apiUrl(AppConfig::API_BASE_URL) {
+    LOGI("Initializing APIService with base URL: %s", apiUrl.c_str());
 }
 
 APIService::~APIService() {
-    if (curl) {
-        curl_easy_cleanup(curl);
-    }
-    curl_global_cleanup();
+    LOGI("APIService destroyed");
 }
 
 APIService& APIService::getInstance() {
@@ -46,80 +33,30 @@ HTTPResponse APIService::performRequest(const std::string& url, const std::strin
                                        const std::string& body, bool ignoreAuth) {
     HTTPResponse response;
     
-    if (!curl) {
-        response.error = "CURL not initialized";
-        return response;
-    }
+    LOGI("API Request: %s %s", method.c_str(), url.c_str());
     
-    // Reset curl handle
-    curl_easy_reset(curl);
-    
-    // Set URL
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    
-    // Set method
-    if (method == "POST") {
-        curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        if (!body.empty()) {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
-        }
-    } else if (method == "PUT") {
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
-        if (!body.empty()) {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
-        }
-    } else if (method == "DELETE") {
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
-    } else if (method == "PATCH") {
-        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
-        if (!body.empty()) {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
-        }
-    }
+    // Create HTTP request
+    HttpRequest request(url, method);
+    request.body = body;
     
     // Set headers
-    struct curl_slist* headers = nullptr;
-    if (!body.empty()) {
-        headers = curl_slist_append(headers, "Content-Type: application/json");
-    }
+    request.setContentType("application/json");
+    request.setUserAgent("Localify-Android-CPP/1.0");
     
+    // Add authentication if not ignored
     if (!ignoreAuth && !currentAuthToken.empty()) {
-        std::string authHeader = "Authorization: Bearer " + currentAuthToken;
-        headers = curl_slist_append(headers, authHeader.c_str());
+        request.setAuthorization(currentAuthToken);
     }
     
-    if (headers) {
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    }
+    // Perform request using our HttpClient
+    HttpResponse httpResponse = HttpClient::getInstance().request(request);
     
-    // Set callback for response data
-    std::string responseData;
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseData);
+    // Convert HttpResponse to HTTPResponse
+    response.statusCode = httpResponse.statusCode;
+    response.data = httpResponse.body;
+    response.error = httpResponse.error;
     
-    // Set SSL options
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-    
-    // Set timeout
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-    
-    // Perform the request
-    CURLcode res = curl_easy_perform(curl);
-    
-    if (res != CURLE_OK) {
-        response.error = curl_easy_strerror(res);
-        LOGE("CURL error: %s", response.error.c_str());
-    } else {
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.statusCode);
-        response.data = responseData;
-        LOGI("Request to %s completed with status %ld", url.c_str(), response.statusCode);
-    }
-    
-    // Cleanup
-    if (headers) {
-        curl_slist_free_all(headers);
-    }
+    LOGI("API Response: %ld", response.statusCode);
     
     return response;
 }
@@ -296,6 +233,35 @@ std::string APIService::getAuthToken() const {
 void APIService::clearAuth() {
     currentAuthToken.clear();
     authExpiresAt.clear();
+}
+
+// Stub implementations for missing methods (to be implemented later)
+std::future<std::vector<ArtistResponse>> APIService::fetchFavoriteArtists(int page, int limit) {
+    return std::async(std::launch::async, []() -> std::vector<ArtistResponse> {
+        LOGI("fetchFavoriteArtists stub called");
+        return std::vector<ArtistResponse>();
+    });
+}
+
+std::future<std::vector<EventResponse>> APIService::fetchFavoriteEvents(int page, int limit, bool upcoming) {
+    return std::async(std::launch::async, []() -> std::vector<EventResponse> {
+        LOGI("fetchFavoriteEvents stub called");
+        return std::vector<EventResponse>();
+    });
+}
+
+std::future<std::vector<VenueResponse>> APIService::fetchFavoriteVenues(int page, int limit) {
+    return std::async(std::launch::async, []() -> std::vector<VenueResponse> {
+        LOGI("fetchFavoriteVenues stub called");
+        return std::vector<VenueResponse>();
+    });
+}
+
+std::future<void> APIService::deleteUserAccount() {
+    return std::async(std::launch::async, [this]() -> void {
+        LOGI("deleteUserAccount stub called");
+        clearAuth();
+    });
 }
 
 } // namespace localify

@@ -179,24 +179,28 @@ private:
     std::unique_ptr<Screen> currentScreen;
     std::vector<std::unique_ptr<Screen>> screens;
     
-    // Screen indices
+public:
     enum ScreenType {
         LOGIN_SCREEN = 0,
         HOME_SCREEN = 1,
         SEARCH_SCREEN = 2,
         FAVORITES_SCREEN = 3,
-        PROFILE_SCREEN = 4
+        PROFILE_SCREEN = 4,
+        MAP_SCREEN = 5
     };
     
     ScreenType currentScreenType;
     
-public:
+    void drawRect(const Rect& rect, const Color& color);
+    void drawText(const std::string& text, float x, float y, const Color& color = Color::Black());
+    
     LocalifyApp(ANativeActivity* activity);
     ~LocalifyApp();
     
     bool initialize();
     void shutdown();
     
+    void setWindow(ANativeWindow* window);
     void handleInput(AInputEvent* event);
     void handleCommand(int32_t cmd);
     
@@ -217,8 +221,6 @@ private:
     
     // OpenGL helper methods
     void clearScreen(const Color& color = Color::White());
-    void drawRect(const Rect& rect, const Color& color);
-    void drawText(const std::string& text, float x, float y, const Color& color = Color::Black());
 };
 
 // Global app instance

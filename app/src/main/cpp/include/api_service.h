@@ -2,11 +2,11 @@
 #define LOCALIFY_API_SERVICE_H
 
 #include "models.h"
+#include "http_client.h"
 #include <string>
 #include <memory>
 #include <future>
 #include <functional>
-#include <curl/curl.h>
 
 namespace localify {
 
@@ -42,7 +42,6 @@ private:
     std::string apiUrl;
     std::string currentAuthToken;
     std::string authExpiresAt;
-    CURL* curl;
     
     // Private constructor for singleton
     APIService();
@@ -51,8 +50,6 @@ private:
     HTTPResponse performRequest(const std::string& url, const std::string& method, 
                                const std::string& body = "", bool ignoreAuth = false);
     std::string buildURL(const std::string& path) const;
-    void setRequestHeaders(CURL* curl, const std::string& method, 
-                          const std::string& body, bool ignoreAuth);
     
     // JSON parsing helpers
     template<typename T>

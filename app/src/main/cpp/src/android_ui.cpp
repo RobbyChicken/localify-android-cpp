@@ -1,5 +1,8 @@
 #include "android_ui.h"
 #include <android/log.h>
+#include <android_native_app_glue.h>
+#include <EGL/egl.h>
+#include <GLES2/gl2.h>
 #include <cmath>
 #include <algorithm>
 
@@ -238,10 +241,11 @@ bool LocalifyApp::initialize() {
     
     LOGI("Initializing Localify App");
     
-    window = activity->window;
+    // Window will be set via setWindow() method when available
     if (!window) {
-        LOGE("No window available");
-        return false;
+        LOGI("Window not yet available, will initialize when window is created");
+        initialized = true; // Mark as initialized, EGL will be set up when window is available
+        return true;
     }
     
     width = ANativeWindow_getWidth(window);
@@ -280,6 +284,22 @@ void LocalifyApp::shutdown() {
     
     initialized = false;
     running = false;
+}
+
+void LocalifyApp::setWindow(ANativeWindow* newWindow) {
+    LOGI("Setting window: %p", newWindow);
+    window = newWindow;
+    
+    if (window && initialized) {
+        width = ANativeWindow_getWidth(window);
+        height = ANativeWindow_getHeight(window);
+        LOGI("Window size updated: %dx%d", width, height);
+        
+        // Initialize EGL if not already done
+        if (display == EGL_NO_DISPLAY) {
+            initializeEGL();
+        }
+    }
 }
 
 bool LocalifyApp::initializeEGL() {
@@ -395,21 +415,19 @@ void LocalifyApp::clearScreen(const Color& color) {
 }
 
 void LocalifyApp::drawRect(const Rect& rect, const Color& color) {
-    // Simple rectangle drawing using OpenGL
-    // In a real implementation, you'd use proper vertex buffers and shaders
+    if (!initialized || display == EGL_NO_DISPLAY) return;
     
-    float vertices[] = {
-        rect.x, rect.y,
-        rect.x + rect.width, rect.y,
-        rect.x + rect.width, rect.y + rect.height,
-        rect.x, rect.y + rect.height
-    };
+    // Simplified rectangle drawing for OpenGL ES 2.0
+    // In a full implementation, this would use shaders
     
-    glColor4f(color.r, color.g, color.b, color.a);
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(2, GL_FLOAT, 0, vertices);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    glDisableClientState(GL_VERTEX_ARRAY);
+    // For now, just clear the screen with the color if it's a full-screen rect
+    if (rect.width >= width && rect.height >= height) {
+        glClearColor(color.r, color.g, color.b, color.a);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+    
+    // TODO: Implement proper shader-based rectangle rendering
+    // This is a placeholder implementation
 }
 
 void LocalifyApp::drawText(const std::string& text, float x, float y, const Color& color) {
@@ -435,19 +453,24 @@ void LocalifyApp::handleInput(AInputEvent* event) {
 
 void LocalifyApp::handleCommand(int32_t cmd) {
     switch (cmd) {
-        case APP_CMD_INIT_WINDOW:
-            if (activity->window != nullptr) {
-                initialize();
-            }
+        case 1: // APP_CMD_INIT_WINDOW
+            LOGI("Window initialized command received");
+            // Window will be set via setWindow() method
             break;
-        case APP_CMD_TERM_WINDOW:
-            shutdown();
+        case 2: // APP_CMD_TERM_WINDOW  
+            LOGI("Window terminated command received");
+            setWindow(nullptr);
             break;
-        case APP_CMD_GAINED_FOCUS:
+        case 10: // APP_CMD_GAINED_FOCUS
+            LOGI("App gained focus");
             running = true;
             break;
-        case APP_CMD_LOST_FOCUS:
+        case 11: // APP_CMD_LOST_FOCUS
+            LOGI("App lost focus");
             running = false;
+            break;
+        default:
+            LOGI("Unhandled command: %d", cmd);
             break;
     }
 }
