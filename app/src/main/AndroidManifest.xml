@@ -9,30 +9,21 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!-- OpenGL ES 2.0 requirement -->
-    <uses-feature
-        android:glEsVersion="0x00020000"
-        android:required="true" />
-
     <application
         android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
         android:label="Localify"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
 
-        <!-- Native Activity -->
+        <!-- Main Java Activity -->
         <activity
-            android:name="android.app.NativeActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:label="Localify"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:screenOrientation="portrait"
             android:launchMode="singleTask">
-            
-            <!-- Tell NativeActivity the name of our .so -->
-            <meta-data
-                android:name="android.app.lib_name"
-                android:value="localify" />
             
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

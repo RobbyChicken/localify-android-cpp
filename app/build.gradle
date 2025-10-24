@@ -42,12 +42,12 @@ android {
         }
     }
     
-    // Pure C++ - no Java/Kotlin source sets
+    // Enable Java source sets for MainActivity
     sourceSets {
         main {
-            java.srcDirs = []
+            java.srcDirs = ['src/main/java']
             kotlin.srcDirs = []
-            res.srcDirs = []
+            res.srcDirs = ['src/main/res']
         }
     }
     
